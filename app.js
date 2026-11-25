@@ -1,6 +1,6 @@
 'use strict';
 /* DendroTeren — inwentaryzacja drzew w terenie (PWA, iOS + Android). */
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -375,10 +375,7 @@ function renderMini(recenter) {
   wrap.hidden = !settings.locMini;
   if (!settings.locMini || $('#view-form').hidden) return;
   if (!mini) initMini();
-  if (miniBaseName !== settings.layer) {
-    if (miniBase) mini.removeLayer(miniBase);
-    miniBase = makeBaseLayer(settings.layer).addTo(mini); miniBaseName = settings.layer;
-  }
+  if (!miniBase) { miniBase = makeBaseLayer('orto').addTo(mini); miniBaseName = 'orto'; } // podgląd zawsze na ortofotomapie
   // pozostałe drzewa projektu jako małe kropki
   const key = trees.length + ':' + trees.map((t) => t.id + (t.loc ? t.loc.lat.toFixed(6) : '')).join(',').length + ':' + (editing ? cur.id : '');
   if (key !== miniDotsKey) {

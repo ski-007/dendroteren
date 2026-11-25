@@ -1,5 +1,5 @@
 /* DendroTeren – service worker: aplikacja offline + pamięć podkładów mapowych. */
-const VERSION = 'dendroteren-1.5.0';
+const VERSION = 'dendroteren-1.5.1';
 const SHELL = [
   './', 'index.html', 'styles.css', 'app.js', 'species.js', 'manifest.webmanifest',
   'layers.js', 'lib/leaflet.js', 'lib/leaflet.css', 'lib/jszip.min.js',
