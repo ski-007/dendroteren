@@ -1,6 +1,6 @@
 'use strict';
 /* DendroTeren — inwentaryzacja drzew w terenie (PWA, iOS + Android). */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -24,7 +24,7 @@ function toast(msg, ms = 2400) {
 const SKEY = 'dendroteren.settings';
 const settings = Object.assign({
   currentProject: null, sliders: true, eye: 1.6, wake: false, stickyStan: false,
-  layer: 'orto', parcels: false, recent: [], hintClosed: false, draft: null, stash: null,
+  layer: 'orto', parcels: false, recent: [], hintClosed: false, draft: null, stash: null, locMini: true,
 }, (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch { return {}; } })());
 function saveSettings() { try { localStorage.setItem(SKEY, JSON.stringify(settings)); } catch { /* brak pamięci lokalnej */ } }
 
@@ -124,6 +124,7 @@ function showView(name) {
   for (const v of ['form', 'map', 'list', 'more']) $('#view-' + v).hidden = v !== name;
   $$('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
   if (name === 'map') { initMap(); setTimeout(() => { map.invalidateSize(); refreshMarkers(); }, 30); }
+  if (name === 'form') setTimeout(() => { mini?.invalidateSize(); renderMini(true); }, 30);
   if (name === 'list') renderList();
   if (name === 'more') renderMore();
 }
@@ -350,9 +351,69 @@ function renderLoc() {
   } else {
     $('#locLL').textContent = '—'; $('#loc92').textContent = '—'; $('#locAcc').textContent = '—';
   }
+  const showDist = !!(l && gps && cur.locMode !== 'live');
+  $('#locDistRow').hidden = !showDist;
+  if (showDist) $('#locDist').textContent = `${fmt(L.latLng(l.lat, l.lon).distanceTo([gps.lat, gps.lon]), 1)} m`;
   $('#locLive').hidden = cur.locMode === 'live';
   $('#locFix').disabled = !gps;
   $('#locAvg').disabled = !gps || avgRunning;
+  renderMini();
+}
+
+/* ---------- mapka podglądu w karcie lokalizacji ---------- */
+let mini = null, miniBase = null, miniBaseName = '', miniMe = null, miniAcc = null, miniTree = null, miniDots = null, miniDotsKey = '', miniCentered = false;
+function initMini() {
+  mini = L.map('locMini', {
+    zoomControl: true, attributionControl: false, maxZoom: 21,
+    dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, tap: false,
+  });
+  mini.setView([52.1, 19.4], 6);
+  miniDots = L.layerGroup().addTo(mini);
+}
+function renderMini(recenter) {
+  const wrap = $('#locMiniWrap');
+  wrap.hidden = !settings.locMini;
+  if (!settings.locMini || $('#view-form').hidden) return;
+  if (!mini) initMini();
+  if (miniBaseName !== settings.layer) {
+    if (miniBase) mini.removeLayer(miniBase);
+    miniBase = makeBaseLayer(settings.layer).addTo(mini); miniBaseName = settings.layer;
+  }
+  // pozostałe drzewa projektu jako małe kropki
+  const key = trees.length + ':' + trees.map((t) => t.id + (t.loc ? t.loc.lat.toFixed(6) : '')).join(',').length + ':' + (editing ? cur.id : '');
+  if (key !== miniDotsKey) {
+    miniDotsKey = key; miniDots.clearLayers();
+    for (const t of trees) {
+      if (!t.loc || (editing && t.id === cur.id)) continue;
+      L.circleMarker([t.loc.lat, t.loc.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#1f5c3a', fillOpacity: 0.9, interactive: false }).addTo(miniDots);
+    }
+  }
+  if (gps) {
+    const ll = [gps.lat, gps.lon];
+    if (!miniMe) {
+      miniAcc = L.circle(ll, { radius: gps.acc, color: '#2a62a8', weight: 1, fillOpacity: 0.15, interactive: false }).addTo(mini);
+      miniMe = L.marker(ll, { icon: L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), interactive: false, keyboard: false }).addTo(mini);
+    } else { miniMe.setLatLng(ll); miniAcc.setLatLng(ll).setRadius(gps.acc); }
+  }
+  const l = cur.loc, fixedPt = l && cur.locMode !== 'live';
+  if (fixedPt) {
+    if (!miniTree) miniTree = L.marker([l.lat, l.lon], { icon: L.divIcon({ className: '', html: '<div class="mini-tree"></div>', iconSize: [0, 0] }), interactive: false, keyboard: false, zIndexOffset: 500 });
+    miniTree.setLatLng([l.lat, l.lon]).addTo(mini);
+  } else if (miniTree) mini.removeLayer(miniTree);
+  $('#lgTree').hidden = !fixedPt;
+  const c = fixedPt ? [l.lat, l.lon] : gps ? [gps.lat, gps.lon] : null;
+  $('#locMiniEmpty').hidden = !!c;
+  if (!c) return;
+  if (!miniCentered || recenter) { mini.setView(c, Math.max(miniCentered ? mini.getZoom() : 18, 16), { animate: false }); miniCentered = true; }
+  else if (!mini.getBounds().pad(-0.25).contains(c)) mini.panTo(c);
+}
+function toggleMini() {
+  settings.locMini = !settings.locMini; saveSettings();
+  const b = $('#locMiniToggle');
+  b.setAttribute('aria-expanded', String(settings.locMini));
+  b.querySelector('.mt-txt').textContent = settings.locMini ? 'Zwiń mapkę' : 'Pokaż mapkę';
+  renderMini(true);
+  if (settings.locMini) setTimeout(() => { mini?.invalidateSize(); renderMini(true); }, 30);
 }
 
 function startGPS() {
@@ -553,16 +614,22 @@ function stepNr(d) {
 let map = null, baseLayers = {}, parcelsLayer = null, treeLayer = null, meMarker = null, meAcc = null, pickMarker = null, picking = false;
 const DEC_COLORS = { 'do wycinki': '#b3261e', 'do zachowania': '#2e7d4f', 'do przesadzenia': '#2a62a8', 'do weryfikacji': '#a8690f' };
 
+function makeBaseLayer(name) {
+  if (name === 'osm') {
+    return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 21, maxNativeZoom: 19, crossOrigin: true, attribution: '© OpenStreetMap',
+    });
+  }
+  // WMTS (gotowe kafle EPSG:3857) – znacznie szybszy niż WMS
+  return L.tileLayer('https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/StandardResolution?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTOFOTOMAPA&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}', {
+    maxZoom: 21, maxNativeZoom: 19, crossOrigin: true, attribution: 'Ortofotomapa © GUGiK',
+  });
+}
 function initMap() {
   if (map) return;
   map = L.map('map', { zoomControl: true, maxZoom: 21 });
-  baseLayers.osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 21, maxNativeZoom: 19, crossOrigin: true, attribution: '© OpenStreetMap',
-  });
-  // WMTS (gotowe kafle EPSG:3857) – znacznie szybszy niż WMS
-  baseLayers.orto = L.tileLayer('https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/StandardResolution?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTOFOTOMAPA&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}', {
-    maxZoom: 21, maxNativeZoom: 19, crossOrigin: true, attribution: 'Ortofotomapa © GUGiK',
-  });
+  baseLayers.osm = makeBaseLayer('osm');
+  baseLayers.orto = makeBaseLayer('orto');
   parcelsLayer = L.tileLayer.wms('https://integracja.gugik.gov.pl/cgi-bin/KrajowaIntegracjaEwidencjiGruntow', {
     layers: 'dzialki,numery_dzialek', format: 'image/png', transparent: true, tileSize: 512, maxZoom: 21, minZoom: 14, crossOrigin: true, attribution: 'Działki © GUGiK',
   });
@@ -1098,6 +1165,11 @@ function bindUI() {
     } else if (e.key === 'Escape') { hideSpeciesList(); }
   });
   $('#speciesClear').addEventListener('click', () => { sp.value = ''; cur.sp = ''; cur.spLat = ''; cur.p = null; renderForm(); sp.focus(); saveDraft(); });
+
+  // mapka podglądu
+  $('#locMiniToggle').addEventListener('click', toggleMini);
+  $('#locMiniCenter').addEventListener('click', () => renderMini(true));
+  if (!settings.locMini) { $('#locMiniToggle').setAttribute('aria-expanded', 'false'); $('#locMiniToggle .mt-txt').textContent = 'Pokaż mapkę'; }
 
   // lokalizacja
   $('#locFix').addEventListener('click', () => {
