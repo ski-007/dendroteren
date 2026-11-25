@@ -1,6 +1,6 @@
 'use strict';
 /* DendroTeren — inwentaryzacja drzew w terenie (PWA, iOS + Android). */
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.6.0';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -124,7 +124,7 @@ function showView(name) {
   for (const v of ['form', 'map', 'list', 'more']) $('#view-' + v).hidden = v !== name;
   $$('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
   if (name === 'map') { initMap(); setTimeout(() => { map.invalidateSize(); refreshMarkers(); }, 30); }
-  if (name === 'form') setTimeout(() => { mini?.invalidateSize(); renderMini(true); }, 30);
+  if (name === 'form') setTimeout(() => { mini?.invalidateSize(); renderMini(miniFollow); }, 30);
   if (name === 'list') renderList();
   if (name === 'more') renderMore();
 }
@@ -361,13 +361,15 @@ function renderLoc() {
 }
 
 /* ---------- mapka podglądu w karcie lokalizacji ---------- */
-let mini = null, miniBase = null, miniBaseName = '', miniMe = null, miniAcc = null, miniTree = null, miniDots = null, miniDotsKey = '', miniCentered = false;
+let mini = null, miniBase = null, miniBaseName = '', miniMe = null, miniAcc = null, miniTree = null, miniDots = null, miniDotsKey = '', miniCentered = false, miniFollow = true;
 function initMini() {
   mini = L.map('locMini', {
     zoomControl: true, attributionControl: false, maxZoom: 21,
-    dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, tap: false,
+    dragging: true, touchZoom: true, doubleClickZoom: true, scrollWheelZoom: 'center', boxZoom: false, keyboard: false,
   });
   mini.setView([52.1, 19.4], 6);
+  // po przesunięciu palcem mapka przestaje podążać za GPS, aż stukniesz ⌖
+  mini.on('dragstart', () => setMiniFollow(false));
   miniDots = L.layerGroup().addTo(mini);
 }
 function renderMini(recenter) {
@@ -402,7 +404,11 @@ function renderMini(recenter) {
   $('#locMiniEmpty').hidden = !!c;
   if (!c) return;
   if (!miniCentered || recenter) { mini.setView(c, Math.max(miniCentered ? mini.getZoom() : 18, 16), { animate: false }); miniCentered = true; }
-  else if (!mini.getBounds().pad(-0.25).contains(c)) mini.panTo(c);
+  else if (miniFollow && !mini.getBounds().pad(-0.25).contains(c)) mini.panTo(c);
+}
+function setMiniFollow(on) {
+  miniFollow = on;
+  $('#locMiniCenter').classList.toggle('off', !on);
 }
 function toggleMini() {
   settings.locMini = !settings.locMini; saveSettings();
@@ -1165,7 +1171,7 @@ function bindUI() {
 
   // mapka podglądu
   $('#locMiniToggle').addEventListener('click', toggleMini);
-  $('#locMiniCenter').addEventListener('click', () => renderMini(true));
+  $('#locMiniCenter').addEventListener('click', () => { setMiniFollow(true); renderMini(true); });
   if (!settings.locMini) { $('#locMiniToggle').setAttribute('aria-expanded', 'false'); $('#locMiniToggle .mt-txt').textContent = 'Pokaż mapkę'; }
 
   // lokalizacja

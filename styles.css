@@ -247,6 +247,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
   position: absolute; right: 8px; top: 8px; z-index: 500; width: 40px; height: 40px; border-radius: 8px;
   border: 2px solid rgba(0,0,0,.2); background: #fff; color: #17221b; display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
+.mini-center.off { background: var(--paint); color: #1a0f05; border-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.loc-mini-map { touch-action: none; }
 .mini-center svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .mini-empty {
   position: absolute; inset: 0; z-index: 450; display: flex; align-items: center; justify-content: center;

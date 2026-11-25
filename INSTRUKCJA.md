@@ -21,7 +21,8 @@ Test na komputerze: `python -m http.server 8765 --directory DendroTeren` → htt
 - **Lokalizacja** – GPS na żywo; „Zatwierdź tutaj”, „Uśrednij 10 s” albo „Popraw na mapie” (przeciągnij punkt).
   Przy pomiarze wysokości położenie zatwierdza się samo, zanim odejdziesz od pnia.
   Mapka podglądu (zawsze ortofotomapa) pokazuje Twoje położenie z GPS (niebieska kropka z kołem dokładności), punkt drzewa
-  (pomarańczowy) i wcześniej zapisane drzewa (zielone kropki). „Zwiń mapkę” chowa podgląd, ⌖ wyśrodkowuje.
+  (pomarańczowy) i wcześniej zapisane drzewa (zielone kropki). Mapkę przesuwasz palcem i powiększasz palcami albo +/−.
+  Po przesunięciu przestaje podążać za GPS – przycisk ⌖ (wtedy pomarańczowy) wraca do Twojego położenia. „Zwiń mapkę” chowa podgląd.
 - **Wysokość telefonem** – celownik na podstawę (1), potem na wierzchołek (2).
   Tryb „Znam odległość” (taśma, dalmierz, kroki) albo „Z wysokości oczu” (teren płaski).
 - Wszystkie pola są opcjonalne. Suwaki włączasz w zakładce Projekt.
