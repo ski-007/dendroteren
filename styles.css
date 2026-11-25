@@ -17,6 +17,8 @@
   --info: #2a62a8;
   --dead: #5d5550;
   --focus: #2a62a8;
+  --sel: #1f5c3a;
+  --sel-ink: #ffffff;
   --radius: 12px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
@@ -40,6 +42,8 @@
     --info: #6fa3e8;
     --dead: #a39a94;
     --focus: #6fa3e8;
+    --sel: #2f7a4e;
+    --sel-ink: #ffffff;
     color-scheme: dark;
   }
 }
@@ -153,16 +157,39 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .species { position: relative; display: flex; flex-direction: column; gap: 6px; }
 .species-box { display: flex; align-items: center; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; }
 .species-box input { border: 0; background: transparent; font-weight: 700; }
+.species-box.has { border: 2px solid var(--sel); background: color-mix(in srgb, var(--sel) 16%, var(--surface)); }
+.sp-browse {
+  flex: none; width: 48px; height: 48px; margin: 2px; border: 0; border-radius: 8px;
+  background: var(--forest); color: var(--forest-ink); display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.sp-browse svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+.sp-browse[aria-expanded="true"] svg { transform: rotate(180deg); }
 .lat { font-style: italic; color: var(--muted); min-height: 1.2em; font-size: 15px; }
 .sticky-pill { margin-left: 6px; background: var(--paint); color: var(--paint-ink); border-radius: 999px; padding: 1px 8px; font-size: 11px; letter-spacing: .02em; text-transform: none; }
 .sp-list {
-  list-style: none; margin: 0; padding: 4px; position: absolute; top: 76px; left: 0; right: 0; z-index: 30;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; max-height: 300px; overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0,0,0,.18);
+  list-style: none; margin: 0; padding: 0 4px 4px; position: absolute; top: 80px; left: 0; right: 0; z-index: 30;
+  background: var(--surface); border: 2px solid var(--forest); border-radius: 12px;
+  max-height: min(56vh, 440px); overflow-y: scroll; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  box-shadow: 0 12px 32px rgba(0,0,0,.25); scrollbar-width: auto; scrollbar-color: var(--paint) var(--surface-2);
 }
-.sp-list li { padding: 10px 10px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; }
-.sp-list li.hl, .sp-list li:hover { background: var(--surface-2); }
-.sp-list li b { font-weight: 700; }
+.sp-list::-webkit-scrollbar { width: 12px; }
+.sp-list::-webkit-scrollbar-track { background: var(--surface-2); border-radius: 999px; }
+.sp-list::-webkit-scrollbar-thumb { background: var(--paint); border-radius: 999px; border: 2px solid var(--surface-2); min-height: 40px; }
+.sp-list .sp-head {
+  position: sticky; top: 0; z-index: 1; padding: 8px 8px 6px; margin: 0 -4px 2px; background: var(--surface);
+  border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); cursor: default;
+}
+.sp-list li[data-i] {
+  padding: 11px 12px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column;
+  border-bottom: 1px solid var(--line); -webkit-tap-highlight-color: transparent;
+}
+.sp-list li[data-i]:last-child { border-bottom: 0; }
+.sp-list li.hl, .sp-list li[data-i]:hover { background: var(--surface-2); }
+.sp-list li[data-i]:active { background: color-mix(in srgb, var(--paint) 30%, var(--surface)); }
+.sp-list li.sel { background: var(--sel); color: var(--sel-ink); border-color: transparent; box-shadow: inset 5px 0 0 var(--paint); }
+.sp-list li.sel b::before { content: "✓ "; color: var(--paint); }
+.sp-list li.sel i { color: var(--sel-ink); opacity: .85; }
+.sp-list li b { font-weight: 700; font-size: 17px; }
 .sp-list li i { color: var(--muted); font-size: 14px; }
 
 /* ---------- chips ---------- */
@@ -177,7 +204,15 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .chips .c-bad.on { background: var(--bad); border-color: var(--bad); color: #fff; }
 .chips .c-info.on { background: var(--info); border-color: var(--info); color: #fff; }
 .chips .c-dead.on { background: var(--dead); border-color: var(--dead); color: #fff; }
-.chips.recent button { font-size: 14px; min-height: 36px; }
+/* ostatnio używane gatunki: wybór + usuwanie */
+.chips.recent { gap: 8px; }
+.rchip { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.chips.recent .rchip button { border: 0; border-radius: 0; background: none; min-height: 40px; font-size: 15px; color: inherit; }
+.chips.recent .rc-pick { padding: 6px 4px 6px 14px; }
+.chips.recent .rc-x { padding: 0 12px 0 8px; font-size: 20px; line-height: 1; color: var(--muted); }
+.chips.recent .rc-x:active { color: var(--bad); }
+.rchip.on { background: var(--sel); border-color: var(--paint); color: var(--sel-ink); font-weight: 700; box-shadow: 0 0 0 1px var(--paint); }
+.chips.recent .rchip.on .rc-x { color: var(--sel-ink); opacity: .8; }
 
 /* ---------- location ---------- */
 .state-pill { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
@@ -195,14 +230,41 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .stem .slider { grid-column: 1 / -1; }
 .stem .rm { width: 48px; height: 48px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-size: 20px; color: var(--muted); cursor: pointer; }
 .stem-n { font-size: 12px; color: var(--muted); grid-column: 1 / -1; margin-bottom: -4px; }
-.calc { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.calc { font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* większe liczby w polach wymiarów */
+.stem input[type="number"], .dim input[type="number"] { font-size: 24px; font-weight: 700; min-height: 54px; font-variant-numeric: tabular-nums; }
+.stem input[type="number"]::placeholder { font-size: 18px; font-weight: 400; }
+.dim .lbl, #cardTree .card-head .lbl { font-size: 14px; }
 .thr { font-size: 13px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
 .thr.over { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
 .thr.under { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
 .dim { display: flex; flex-direction: column; gap: 6px; }
 .dim + .dim { margin-top: 8px; }
 .dim-row { display: flex; gap: 8px; }
-.slider { width: 100%; height: 36px; accent-color: var(--paint); }
+/* suwaki: gruby tor wypełniany do gałki, duża wyraźna gałka */
+.slider {
+  --track: color-mix(in srgb, var(--ink) 16%, transparent);
+  -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0;
+  background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.slider:focus { outline: none; }
+.slider::-webkit-slider-runnable-track {
+  height: 10px; border-radius: 999px;
+  background: linear-gradient(to right, var(--paint) 0 var(--p, 0%), var(--track) var(--p, 0%) 100%);
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 34px; height: 34px; margin-top: -12px; border-radius: 50%;
+  background: var(--paint); border: 4px solid #fff;
+  box-shadow: 0 0 0 2px var(--paint), 0 3px 10px rgba(0,0,0,.4); transition: transform .1s;
+}
+.slider:active::-webkit-slider-thumb, .slider:focus-visible::-webkit-slider-thumb { transform: scale(1.15); }
+.slider::-moz-range-track { height: 10px; border-radius: 999px; background: var(--track); }
+.slider::-moz-range-progress { height: 10px; border-radius: 999px; background: var(--paint); }
+.slider::-moz-range-thumb {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--paint); border: 4px solid #fff;
+  box-shadow: 0 0 0 2px var(--paint), 0 3px 10px rgba(0,0,0,.4);
+}
+.clino .slider { --track: rgba(255,255,255,.3); }
 body:not(.sliders) .slider:not(.always) { display: none; }
 
 /* ---------- photos ---------- */

@@ -358,6 +358,7 @@ const Layers = (() => {
     $('#placeBar').hidden = false;
     $('#placeName').textContent = rec.name;
     $('#placeOpacity').value = rec.opacity ?? 0.7;
+    window.fillSliders?.($('#placeBar'));
     $('#layersPanel').hidden = true;
   }
   async function stopPlacement(save) {
@@ -412,6 +413,7 @@ const Layers = (() => {
       }
       box.append(row);
     }
+    window.fillSliders?.(box);
   }
 
   /* ---------- API ---------- */

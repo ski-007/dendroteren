@@ -1,6 +1,6 @@
 'use strict';
 /* DendroTeren — inwentaryzacja drzew w terenie (PWA, iOS + Android). */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -139,6 +139,8 @@ function renderForm() {
   setSeg('#fTyp', cur.typ);
   $('#fSpecies').value = cur.sp || '';
   $('#speciesLat').textContent = cur.spLat || '';
+  $('.species-box').classList.toggle('has', !!cur.sp);
+  $$('#recentSpecies .rchip').forEach((c) => c.classList.toggle('on', c.firstChild.textContent === cur.sp));
   $('#stickyPill').hidden = !cur.sp || editing;
   const isTree = cur.typ === 'drzewo';
   $('#cardTree').hidden = !isTree;
@@ -154,7 +156,17 @@ function renderForm() {
   $('#btnClear').hidden = editing;
   $('#btnSave').textContent = editing ? 'Zapisz zmiany' : 'Zapisz i następne';
   renderLoc(); renderPhotos(); renderCalc();
+  fillSliders();
 }
+
+/* wypełnienie toru suwaka do położenia gałki */
+function fillSlider(el) {
+  const min = +el.min || 0, max = +el.max || 100, v = +el.value;
+  el.style.setProperty('--p', (max > min ? Math.max(0, Math.min(100, (v - min) / (max - min) * 100)) : 0) + '%');
+}
+function fillSliders(root = document) { root.querySelectorAll('input[type="range"]').forEach(fillSlider); }
+window.fillSliders = fillSliders;
+document.addEventListener('input', (e) => { if (e.target.type === 'range') fillSlider(e.target); }, true);
 
 function checkDup() {
   const v = $('#fNr').value.trim();
@@ -178,7 +190,7 @@ function renderStems(key) {
     Object.assign(sl, { type: 'range', className: 'slider', min: '0', max: '500', step: '1', value: v ?? 0 });
     sl.setAttribute('aria-label', 'Obwód – suwak');
     const setVal = (val) => { if (!cur[key].length) cur[key] = [null]; cur[key][i] = val; renderCalc(); saveDraft(); };
-    inp.addEventListener('input', () => { const val = num(inp.value); sl.value = val ?? 0; setVal(val); });
+    inp.addEventListener('input', () => { const val = num(inp.value); sl.value = val ?? 0; fillSlider(sl); setVal(val); });
     sl.addEventListener('input', () => { inp.value = sl.value; setVal(+sl.value); });
     rm.addEventListener('click', () => { cur[key].splice(i, 1); renderStems(key); renderCalc(); saveDraft(); });
     row.append(inp, rm, sl);
@@ -217,28 +229,43 @@ function searchSpecies(q) {
     if (sc >= 0) scored.push([sc, s]);
   }
   scored.sort((x, y) => x[0] - y[0] || collator.compare(x[1].pl, y[1].pl));
-  return scored.slice(0, 12).map((x) => x[1]);
+  return scored.map((x) => x[1]);
 }
+/* pełna lista gatunków alfabetycznie (przeglądanie bez wpisywania) */
+function allSpecies() { return [...window.SPECIES].sort((a, b) => collator.compare(a.pl, b.pl)); }
+function hideSpeciesList() { $('#speciesList').hidden = true; $('#speciesBrowse').setAttribute('aria-expanded', 'false'); }
 function showSpeciesList(q) {
-  spItems = searchSpecies(q);
+  const browse = !norm(q || '').trim();
+  spItems = browse ? allSpecies() : searchSpecies(q);
   const ul = $('#speciesList');
   ul.textContent = '';
-  spHl = spItems.length ? 0 : -1;
+  const selIdx = spItems.findIndex((s) => s.pl === cur.sp);
+  spHl = browse ? selIdx : (spItems.length ? 0 : -1);
+  if (spItems.length) {
+    const head = document.createElement('li'); head.className = 'sp-head';
+    head.textContent = (browse ? `Wszystkie gatunki (${spItems.length})` : `Pasuje: ${spItems.length}`) + (spItems.length > 4 ? ' · przesuń palcem' : '');
+    ul.append(head);
+  }
   spItems.forEach((s, i) => {
     const li = document.createElement('li');
-    if (i === 0) li.className = 'hl';
+    li.dataset.i = i;
+    if (s.pl === cur.sp) li.classList.add('sel');
+    if (i === spHl) li.classList.add('hl');
     const b = document.createElement('b'); b.textContent = s.pl;
     const it = document.createElement('i'); it.textContent = s.lat;
     li.append(b, it);
-    li.addEventListener('pointerdown', (e) => { e.preventDefault(); pickSpecies(s); });
     ul.append(li);
   });
   ul.hidden = !spItems.length;
+  $('#speciesBrowse').setAttribute('aria-expanded', String(!ul.hidden));
+  const sel = ul.querySelector('li.sel') || ul.querySelector('li.hl');
+  ul.scrollTop = 0;
+  if (sel && browse) ul.scrollTop = Math.max(0, sel.offsetTop - ul.clientHeight / 2 + sel.offsetHeight / 2);
 }
 function pickSpecies(s) {
   cur.sp = s.pl; cur.spLat = s.lat; cur.p = s.p;
   if (s.k && cur.typ === 'drzewo' && !hasContent(cur)) cur.typ = 'krzew';
-  $('#speciesList').hidden = true;
+  hideSpeciesList();
   $('#fSpecies').blur();
   settings.recent = [s, ...settings.recent.filter((r) => r.pl !== s.pl)].slice(0, 8);
   renderRecent(); renderForm(); saveDraft();
@@ -256,11 +283,22 @@ function commitTypedSpecies() {
 function renderRecent() {
   const box = $('#recentSpecies');
   box.textContent = '';
-  settings.recent.filter((r) => r.pl !== cur.sp).slice(0, 6).forEach((r) => {
+  settings.recent.slice(0, 8).forEach((r) => {
+    const chip = document.createElement('span');
+    chip.className = 'rchip' + (r.pl === cur.sp ? ' on' : '');
     const b = document.createElement('button');
-    b.type = 'button'; b.textContent = r.pl;
+    b.type = 'button'; b.className = 'rc-pick'; b.textContent = r.pl;
     b.addEventListener('click', () => pickSpecies(r));
-    box.append(b);
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'rc-x'; x.textContent = '×';
+    x.setAttribute('aria-label', `Usuń „${r.pl}” z ostatnio używanych`);
+    x.addEventListener('click', () => {
+      settings.recent = settings.recent.filter((q) => q.pl !== r.pl);
+      saveSettings(); renderRecent();
+      toast(`Usunięto „${r.pl}” z listy`);
+    });
+    chip.append(b, x);
+    box.append(chip);
   });
 }
 
@@ -848,6 +886,7 @@ async function openClino() {
   $('#clino').hidden = false;
   $('#clinoEyeVal').textContent = fmt(settings.eye, 2);
   if (!$('#clinoDist').value) { $('#clinoDist').value = 15; $('#clinoDistR').value = 15; }
+  fillSliders($('#clino'));
   renderClino();
   await startClinoSensors();
 }
@@ -992,19 +1031,39 @@ function bindUI() {
 
   // gatunek
   const sp = $('#fSpecies');
+  const spl = $('#speciesList');
   sp.addEventListener('input', () => showSpeciesList(sp.value));
-  sp.addEventListener('focus', () => { sp.select(); if (sp.value) showSpeciesList(sp.value); });
-  sp.addEventListener('blur', () => { setTimeout(() => { $('#speciesList').hidden = true; commitTypedSpecies(); }, 120); });
+  sp.addEventListener('focus', () => { sp.select(); showSpeciesList(sp.value === cur.sp ? '' : sp.value); });
+  // lista zostaje otwarta przy przewijaniu; zamyka ją wybór, stuknięcie obok albo Esc
+  sp.addEventListener('blur', () => { setTimeout(() => commitTypedSpecies(), 120); });
+  // mousedown pojawia się tylko przy stuknięciu (nie przy przewijaniu) – nie zabieraj fokusu polu
+  spl.addEventListener('mousedown', (e) => e.preventDefault());
+  spl.addEventListener('click', (e) => {
+    const li = e.target.closest('li[data-i]');
+    if (!li) return;
+    const s = spItems[+li.dataset.i];
+    $$('#speciesList li.sel').forEach((l) => l.classList.remove('sel'));
+    li.classList.add('sel');
+    setTimeout(() => pickSpecies(s), 140); // krótkie podświetlenie wybranego gatunku
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (!spl.hidden && !e.target.closest('.species')) hideSpeciesList();
+  });
+  $('#speciesBrowse').addEventListener('click', () => {
+    if (!spl.hidden) { hideSpeciesList(); return; }
+    showSpeciesList('');
+  });
   sp.addEventListener('keydown', (e) => {
-    const lis = $$('#speciesList li');
+    const lis = $$('#speciesList li[data-i]');
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       spHl = Math.max(0, Math.min(lis.length - 1, spHl + (e.key === 'ArrowDown' ? 1 : -1)));
       lis.forEach((l, i) => l.classList.toggle('hl', i === spHl));
+      lis[spHl]?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (spHl >= 0 && spItems[spHl] && !$('#speciesList').hidden) pickSpecies(spItems[spHl]); else sp.blur();
-    } else if (e.key === 'Escape') { $('#speciesList').hidden = true; }
+      if (spHl >= 0 && spItems[spHl] && !spl.hidden) pickSpecies(spItems[spHl]); else { hideSpeciesList(); sp.blur(); }
+    } else if (e.key === 'Escape') { hideSpeciesList(); }
   });
   $('#speciesClear').addEventListener('click', () => { sp.value = ''; cur.sp = ''; cur.spLat = ''; cur.p = null; renderForm(); sp.focus(); saveDraft(); });
 
@@ -1034,7 +1093,7 @@ function bindUI() {
   // wymiary + suwaki
   for (const [id, key] of [['fH', 'h'], ['fCrown', 'crown'], ['fArea', 'area']]) {
     const inp = $('#' + id), sl = $('#' + id + 'r');
-    inp.addEventListener('input', () => { cur[key] = num(inp.value); sl.value = cur[key] ?? 0; renderCalc(); saveDraft(); });
+    inp.addEventListener('input', () => { cur[key] = num(inp.value); sl.value = cur[key] ?? 0; fillSlider(sl); renderCalc(); saveDraft(); });
     sl.addEventListener('input', () => { inp.value = sl.value; cur[key] = +sl.value; renderCalc(); saveDraft(); });
   }
 
@@ -1117,7 +1176,7 @@ function bindUI() {
   $('#clinoClose').addEventListener('click', closeClino);
   $('#clinoStart').addEventListener('click', startClinoSensors);
   $$('#clinoMode button').forEach((b) => b.addEventListener('click', () => { clino.mode = b.dataset.v; renderClino(); }));
-  $('#clinoDist').addEventListener('input', () => { $('#clinoDistR').value = num($('#clinoDist').value) ?? 0; renderClino(); });
+  $('#clinoDist').addEventListener('input', () => { $('#clinoDistR').value = num($('#clinoDist').value) ?? 0; fillSlider($('#clinoDistR')); renderClino(); });
   $('#clinoDistR').addEventListener('input', () => { $('#clinoDist').value = $('#clinoDistR').value; renderClino(); });
   $('#clinoBase').addEventListener('click', () => captureAngle('base'));
   $('#clinoTop').addEventListener('click', () => captureAngle('top'));

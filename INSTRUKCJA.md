@@ -16,7 +16,8 @@ Test na komputerze: `python -m http.server 8765 --directory DendroTeren` → htt
 
 ## Praca w terenie
 - **Nr** – automatycznie +1; możesz wpisać własny w dowolnej chwili, kolejne liczą się od niego.
-- **Gatunek** zostaje dla kolejnych drzew, dopóki go nie zmienisz.
+- **Gatunek** zostaje dla kolejnych drzew, dopóki go nie zmienisz. Lista podpowiedzi przewija się palcem;
+  przycisk ▾ otwiera wszystkie gatunki bez pisania. Ostatnio używane gatunki usuwasz krzyżykiem ×.
 - **Lokalizacja** – GPS na żywo; „Zatwierdź tutaj”, „Uśrednij 10 s” albo „Popraw na mapie” (przeciągnij punkt).
   Przy pomiarze wysokości położenie zatwierdza się samo, zanim odejdziesz od pnia.
 - **Wysokość telefonem** – celownik na podstawę (1), potem na wierzchołek (2).
