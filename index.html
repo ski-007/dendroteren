@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DendroTeren</title>
+<meta name="description" content="Inwentaryzacja drzew i krzewów w terenie">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1f3a2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DendroTeren">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <button id="projBtn" class="proj-btn" type="button" aria-label="Zmień projekt">
+    <span class="proj-eyebrow">Projekt</span>
+    <span id="projName" class="proj-name">—</span>
+  </button>
+  <div id="gpsBadge" class="gps-badge" data-q="none" title="Dokładność GPS">
+    <span class="dot"></span><span id="gpsBadgeTxt">GPS…</span>
+  </div>
+</header>
+
+<div id="installHint" class="install-hint" hidden>
+  <span id="installHintTxt"></span>
+  <button id="installHintClose" type="button" class="link-btn">Zamknij</button>
+</div>
+
+<main id="main">
+
+  <!-- ===================== POMIAR ===================== -->
+  <section id="view-form" class="view" aria-label="Pomiar">
+    <div id="editBanner" class="edit-banner" hidden>
+      <span>Edytujesz <b id="editNr"></b></span>
+      <button id="cancelEdit" type="button" class="link-btn">Anuluj edycję</button>
+    </div>
+
+    <div class="nr-row card">
+      <label for="fNr" class="lbl">Nr</label>
+      <button type="button" class="step-btn" id="nrMinus" aria-label="Poprzedni numer">−</button>
+      <input id="fNr" class="nr-input" type="text" inputmode="text" autocomplete="off" spellcheck="false">
+      <button type="button" class="step-btn" id="nrPlus" aria-label="Następny numer">+</button>
+      <div id="nrWarn" class="field-note warn" hidden>Ten numer już jest w projekcie</div>
+    </div>
+
+    <div class="card">
+      <div class="seg" role="radiogroup" aria-label="Typ obiektu" id="fTyp">
+        <button type="button" data-v="drzewo" class="on">Drzewo</button>
+        <button type="button" data-v="krzew">Krzew</button>
+        <button type="button" data-v="skupina">Skupina</button>
+      </div>
+
+      <div class="species">
+        <label for="fSpecies" class="lbl">Gatunek <span class="sticky-pill" id="stickyPill" hidden>zostaje dla kolejnych</span></label>
+        <div class="species-box">
+          <input id="fSpecies" type="text" autocomplete="off" spellcheck="false" placeholder="Nazwa polska lub łacińska">
+          <button id="speciesClear" type="button" class="icon-btn" aria-label="Wyczyść gatunek">×</button>
+        </div>
+        <div id="speciesLat" class="lat"></div>
+        <ul id="speciesList" class="sp-list" hidden></ul>
+        <div id="recentSpecies" class="chips recent"></div>
+      </div>
+    </div>
+
+    <div class="card loc-card">
+      <div class="card-head">
+        <span class="lbl">Lokalizacja</span>
+        <span id="locState" class="state-pill" data-s="live">na żywo</span>
+      </div>
+      <div class="coords">
+        <div><span class="k">φ, λ</span> <span id="locLL" class="v">—</span></div>
+        <div><span class="k">PUWG 1992</span> <span id="loc92" class="v">—</span></div>
+        <div><span class="k">dokładność</span> <span id="locAcc" class="v">—</span></div>
+      </div>
+      <div class="btn-row">
+        <button id="locFix" type="button" class="btn">Zatwierdź tutaj</button>
+        <button id="locAvg" type="button" class="btn">Uśrednij 10 s</button>
+        <button id="locMap" type="button" class="btn">Popraw na mapie</button>
+      </div>
+      <button id="locLive" type="button" class="link-btn" hidden>Wróć do GPS na żywo</button>
+    </div>
+
+    <div class="card" id="cardTree">
+      <div class="card-head">
+        <span class="lbl">Obwód na wys. 130 cm <span class="unit">[cm]</span></span>
+        <span id="dbhOut" class="calc"></span>
+      </div>
+      <div id="c130" class="stems"></div>
+      <button type="button" class="link-btn add-stem" data-target="c130">+ kolejny pień</button>
+
+      <div class="card-head mt">
+        <span class="lbl">Obwód na wys. 5 cm <span class="unit">[cm]</span></span>
+        <span id="thrOut" class="thr" hidden></span>
+      </div>
+      <div id="c5" class="stems"></div>
+      <button type="button" class="link-btn add-stem" data-target="c5">+ kolejny pień</button>
+    </div>
+
+    <div class="card">
+      <div class="dim" id="dimH">
+        <label for="fH" class="lbl">Wysokość <span class="unit">[m]</span></label>
+        <div class="dim-row">
+          <input id="fH" type="number" inputmode="decimal" step="0.5" min="0">
+          <button id="openClino" type="button" class="btn btn-tool">Zmierz telefonem</button>
+        </div>
+        <input id="fHr" class="slider" type="range" min="0" max="40" step="0.5" value="0" aria-label="Wysokość – suwak">
+      </div>
+      <div class="dim" id="dimCrown">
+        <label for="fCrown" class="lbl">Średnica korony <span class="unit">[m]</span></label>
+        <input id="fCrown" type="number" inputmode="decimal" step="0.5" min="0">
+        <input id="fCrownr" class="slider" type="range" min="0" max="30" step="0.5" value="0" aria-label="Korona – suwak">
+      </div>
+      <div class="dim" id="dimArea" hidden>
+        <label for="fArea" class="lbl">Powierzchnia krzewów <span class="unit">[m²]</span></label>
+        <input id="fArea" type="number" inputmode="decimal" step="1" min="0">
+        <input id="fArear" class="slider" type="range" min="0" max="500" step="1" value="0" aria-label="Powierzchnia – suwak">
+        <span id="areaThr" class="thr" hidden></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="lbl">Stan</span>
+      <div class="chips single" id="fStan">
+        <button type="button" data-v="dobry" class="c-ok">dobry</button>
+        <button type="button" data-v="średni" class="c-warn">średni</button>
+        <button type="button" data-v="zły" class="c-bad">zły</button>
+        <button type="button" data-v="martwy" class="c-dead">martwy</button>
+      </div>
+
+      <span class="lbl mt">Cechy</span>
+      <div class="chips multi" id="fCechy">
+        <button type="button" data-v="dziuple">dziuple</button>
+        <button type="button" data-v="posusz">posusz</button>
+        <button type="button" data-v="owocniki grzybów">owocniki grzybów</button>
+        <button type="button" data-v="ubytki/rany">ubytki / rany</button>
+        <button type="button" data-v="pochylenie">pochylenie</button>
+        <button type="button" data-v="gniazda">gniazda</button>
+        <button type="button" data-v="jemioła">jemioła</button>
+        <button type="button" data-v="ślady owadów saproksylicznych">ślady owadów saproksylicznych</button>
+        <button type="button" data-v="pomnik przyrody">pomnik przyrody</button>
+        <button type="button" data-v="drzewo pomnikowe (wymiary)">wymiary pomnikowe</button>
+      </div>
+
+      <span class="lbl mt">Przeznaczenie</span>
+      <div class="chips single" id="fDecyzja">
+        <button type="button" data-v="do zachowania" class="c-ok">do zachowania</button>
+        <button type="button" data-v="do wycinki" class="c-bad">do wycinki</button>
+        <button type="button" data-v="do przesadzenia" class="c-info">do przesadzenia</button>
+        <button type="button" data-v="do weryfikacji" class="c-warn">do weryfikacji</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="lbl">Zdjęcia</span>
+      <div id="photos" class="photos"></div>
+      <div class="btn-row">
+        <label class="btn" for="photoCam">Zrób zdjęcie</label>
+        <label class="btn" for="photoGal">Z galerii</label>
+      </div>
+      <input id="photoCam" type="file" accept="image/*" capture="environment" hidden>
+      <input id="photoGal" type="file" accept="image/*" multiple hidden>
+    </div>
+
+    <div class="card">
+      <label for="fUwagi" class="lbl">Uwagi</label>
+      <textarea id="fUwagi" rows="3" placeholder="np. kolizja z drogą dojazdową, drzewo przy granicy działki"></textarea>
+    </div>
+
+    <div class="save-bar">
+      <button id="btnClear" type="button" class="btn btn-ghost">Wyczyść</button>
+      <button id="btnDelete" type="button" class="btn btn-danger" hidden>Usuń</button>
+      <button id="btnSave" type="button" class="btn btn-primary">Zapisz i następne</button>
+    </div>
+  </section>
+
+  <!-- ===================== MAPA ===================== -->
+  <section id="view-map" class="view view-map" aria-label="Mapa" hidden>
+    <div id="map"></div>
+    <div class="map-ctrls">
+      <button id="mapLayerBtn" type="button" class="map-btn">Ortofoto</button>
+      <button id="mapParcelsBtn" type="button" class="map-btn">Działki</button>
+      <button id="mapLayersBtn" type="button" class="map-btn">Warstwy</button>
+      <button id="mapMeBtn" type="button" class="map-btn" aria-label="Pokaż moją pozycję"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg></button>
+    </div>
+    <div id="layersPanel" class="pick-bar layers-panel" hidden>
+      <div class="card-head">
+        <span class="lbl">Moje warstwy</span>
+        <button id="layersClose" type="button" class="link-btn">Zamknij</button>
+      </div>
+      <div id="layersList" class="lyr-list"></div>
+      <p id="layersEmpty" class="hint">Brak warstw. Wgraj np. granice inwestycji, plan zagospodarowania albo ortofotomapę z QGIS.</p>
+      <label class="btn btn-primary" for="layerFile">Wgraj plik z telefonu</label>
+      <input id="layerFile" type="file" multiple hidden accept=".geojson,.json,.kml,.kmz,.gpx,.zip,.tif,.tiff,.jpg,.jpeg,.png,.webp,.jgw,.jpgw,.pgw,.pngw,.wld,.tfw,.prj,application/zip,application/json,image/*">
+      <p class="hint">Wektor: GeoJSON, KML/KMZ, GPX, Shapefile spakowany w ZIP. Raster: GeoTIFF albo JPG/PNG z plikiem world (.jgw/.pgw, zaznacz oba pliki naraz). Obraz bez georeferencji (np. skan planu) dopasujesz ręcznie. Układy: EPSG:2180, PUWG 2000 (2176–2179), WGS84.</p>
+    </div>
+
+    <div id="placeBar" class="pick-bar" hidden>
+      <div class="pick-txt">Dopasuj <b id="placeName"></b>: przeciągnij narożniki <b>1–3</b> (obrót i skala) albo środek <b>✥</b> (przesunięcie).</div>
+      <label class="place-op"><span>Przezroczystość</span><input id="placeOpacity" class="slider always" type="range" min="0.1" max="1" step="0.05" value="0.7"></label>
+      <div class="btn-row">
+        <button id="placeCancel" type="button" class="btn btn-ghost">Anuluj</button>
+        <button id="placeOk" type="button" class="btn btn-primary">Zapisz położenie</button>
+      </div>
+    </div>
+
+    <div id="pickBar" class="pick-bar" hidden>
+      <div class="pick-txt">Przeciągnij znacznik albo stuknij w mapę, aby ustawić drzewo <b id="pickNr"></b></div>
+      <div class="btn-row">
+        <button id="pickCancel" type="button" class="btn btn-ghost">Anuluj</button>
+        <button id="pickOk" type="button" class="btn btn-primary">Zatwierdź położenie</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== LISTA ===================== -->
+  <section id="view-list" class="view" aria-label="Lista" hidden>
+    <div id="summary" class="summary"></div>
+    <input id="listSearch" type="search" placeholder="Szukaj po numerze, gatunku, uwagach">
+    <div class="table-wrap">
+      <table class="tree-table">
+        <thead><tr><th>Nr</th><th>Gatunek</th><th class="n">Obw. 130</th><th class="n">H</th><th>Stan</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+    <p id="listEmpty" class="empty" hidden>Brak pomiarów w tym projekcie. Zacznij od zakładki <b>Pomiar</b>.</p>
+  </section>
+
+  <!-- ===================== PROJEKT / EKSPORT ===================== -->
+  <section id="view-more" class="view" aria-label="Projekt" hidden>
+    <div class="card">
+      <span class="lbl">Projekty</span>
+      <div id="projList" class="proj-list"></div>
+      <div class="btn-row">
+        <button id="projNew" type="button" class="btn">Nowy projekt</button>
+        <button id="projRename" type="button" class="btn">Zmień nazwę</button>
+        <button id="projDelete" type="button" class="btn btn-danger">Usuń projekt</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="lbl">Eksport projektu</span>
+      <p class="hint">ZIP zawiera tabelę CSV (Excel), GeoJSON do QGIS (WGS84, z polami X/Y PUWG 1992), zdjęcia i kopię zapasową do ponownego wczytania.</p>
+      <div class="btn-row">
+        <button id="expZip" type="button" class="btn btn-primary">ZIP ze zdjęciami</button>
+        <button id="expCsv" type="button" class="btn">CSV</button>
+        <button id="expGeo" type="button" class="btn">GeoJSON</button>
+      </div>
+      <div id="expReady" class="exp-ready" hidden>
+        <span>Gotowe: <b id="expReadyName"></b></span>
+        <div class="btn-row">
+          <button id="expShare" type="button" class="btn btn-primary">Udostępnij (e-mail, Dysk…)</button>
+          <button id="expDownload" type="button" class="btn">Zapisz plik</button>
+        </div>
+      </div>
+      <span class="lbl mt">Wczytaj kopię</span>
+      <p class="hint">Wczytuje ZIP wyeksportowany z DendroTeren jako nowy projekt (np. na innym telefonie).</p>
+      <label class="btn" for="impFile">Wybierz plik ZIP</label>
+      <input id="impFile" type="file" accept=".zip,application/zip" hidden>
+    </div>
+
+    <div class="card settings">
+      <span class="lbl">Numeracja</span>
+      <div class="seg" id="setNumMode">
+        <button type="button" data-v="auto" class="on">Automatyczna</button>
+        <button type="button" data-v="manual">Własna</button>
+      </div>
+      <div class="set-grid">
+        <label for="setPrefix">Przedrostek</label>
+        <input id="setPrefix" type="text" maxlength="8" placeholder="np. D-">
+        <label for="setNext">Następny numer</label>
+        <input id="setNext" type="number" inputmode="numeric" min="0" step="1">
+      </div>
+      <p class="hint">Numer możesz też zmienić w każdej chwili w polu „Nr”. Kolejne drzewa liczą się dalej od wpisanej wartości.</p>
+
+      <span class="lbl mt">Formularz</span>
+      <label class="switch"><input id="setSliders" type="checkbox"> <span>Suwaki przy wymiarach</span></label>
+      <label class="switch"><input id="setStickyStan" type="checkbox"> <span>Zapamiętuj też stan i przeznaczenie</span></label>
+      <label class="switch"><input id="setWake" type="checkbox"> <span>Nie wygaszaj ekranu</span></label>
+      <div class="set-grid">
+        <label for="setEye">Wysokość oczu [m]</label>
+        <input id="setEye" type="number" inputmode="decimal" step="0.01" min="0.5" max="2.5">
+      </div>
+      <p class="hint">Wysokość oczu jest potrzebna do pomiaru wysokości drzewa bez znajomości odległości.</p>
+    </div>
+
+    <div class="card">
+      <span class="lbl">Pamięć</span>
+      <p id="storageInfo" class="hint"></p>
+      <p class="hint">Dane są zapisane tylko w tym telefonie. Rób eksport ZIP po każdym dniu pracy.</p>
+    </div>
+    <p class="about">DendroTeren · wersja <span id="appVer"></span></p>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Widoki">
+  <button type="button" data-view="form" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M7 8l5-5 5 5M5 14h14"/></svg><span>Pomiar</span></button>
+  <button type="button" data-view="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg><span>Mapa</span></button>
+  <button type="button" data-view="list"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1"/></svg><span>Lista</span><b id="listCount" class="count"></b></button>
+  <button type="button" data-view="more"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span>Projekt</span></button>
+</nav>
+
+<!-- ===================== KLINOMETR ===================== -->
+<div id="clino" class="clino" hidden>
+  <video id="clinoVideo" playsinline muted autoplay></video>
+  <div class="reticle" aria-hidden="true"><span></span></div>
+  <div class="clino-top">
+    <button id="clinoClose" type="button" class="map-btn">Zamknij</button>
+    <div class="angle"><span id="clinoAngle">—</span><small>°</small></div>
+  </div>
+  <div class="clino-panel">
+    <div class="seg dark" id="clinoMode">
+      <button type="button" data-v="dist" class="on">Znam odległość</button>
+      <button type="button" data-v="eye">Z wysokości oczu</button>
+    </div>
+    <div id="clinoDistRow" class="clino-dist">
+      <label for="clinoDist">Odległość od pnia [m]</label>
+      <input id="clinoDist" type="number" inputmode="decimal" step="0.5" min="0">
+      <input id="clinoDistR" class="slider" type="range" min="0" max="60" step="0.5" value="15" aria-label="Odległość – suwak">
+    </div>
+    <div id="clinoEyeRow" class="clino-dist" hidden>
+      <span>Trzymaj telefon na wysokości oczu (<b id="clinoEyeVal"></b> m), teren płaski.</span>
+    </div>
+    <div class="clino-steps">
+      <button id="clinoBase" type="button" class="btn">1. Podstawa <b id="clinoBaseV">—</b></button>
+      <button id="clinoTop" type="button" class="btn">2. Wierzchołek <b id="clinoTopV">—</b></button>
+    </div>
+    <div class="clino-res"><span id="clinoRes">Wyceluj krzyżykiem w podstawę pnia i stuknij 1, potem w wierzchołek i stuknij 2.</span></div>
+    <button id="clinoUse" type="button" class="btn btn-primary" disabled>Użyj wysokości</button>
+    <button id="clinoStart" type="button" class="btn btn-primary" hidden>Włącz czujnik i aparat</button>
+  </div>
+</div>
+
+<div id="viewer" class="viewer" hidden><img id="viewerImg" alt="Zdjęcie drzewa"></div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="lib/leaflet.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="species.js"></script>
+<script src="app.js"></script>
+<script src="layers.js"></script>
+</body>
+</html>
