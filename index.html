@@ -51,6 +51,40 @@
       <div id="nrWarn" class="field-note warn" hidden>Ten numer już jest w projekcie</div>
     </div>
 
+    <div class="card loc-card map-on" id="locCard">
+      <div class="card-head loc-head">
+        <span class="lbl">Lokalizacja</span>
+        <span class="loc-head-r">
+          <span id="locState" class="state-pill" data-s="live">na żywo</span>
+          <button id="locMiniToggle" type="button" class="mini-toggle" aria-expanded="true" aria-controls="locBody">
+            <span class="mt-txt">Zwiń mapkę</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+          </button>
+        </span>
+      </div>
+      <div id="locBody" class="loc-body">
+        <div id="locMini" class="loc-mini-map" aria-label="Podgląd położenia na ortofotomapie"></div>
+        <div id="locMiniEmpty" class="mini-empty">Czekam na sygnał GPS…</div>
+        <button id="locMiniCenter" type="button" class="mini-center" aria-label="Wyśrodkuj mapkę na położeniu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        </button>
+        <div class="coords">
+          <div><span class="k">φ, λ</span> <span id="locLL" class="v">—</span></div>
+          <div><span class="k">PUWG 1992</span> <span id="loc92" class="v">—</span></div>
+          <div><span class="k">dokładność</span> <span id="locAcc" class="v">—</span></div>
+          <div id="locDistRow" hidden><span class="k">od Ciebie</span> <span id="locDist" class="v">—</span></div>
+        </div>
+        <div class="loc-actions">
+          <button id="locLive" type="button" class="live-btn" hidden>↺ Wróć do GPS na żywo</button>
+          <div class="btn-row">
+            <button id="locFix" type="button" class="btn">Zatwierdź tutaj</button>
+            <button id="locAvg" type="button" class="btn">Uśrednij 10 s</button>
+            <button id="locMap" type="button" class="btn">Popraw na mapie</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="seg" role="radiogroup" aria-label="Typ obiektu" id="fTyp">
         <button type="button" data-v="drzewo" class="on">Drzewo</button>
@@ -69,42 +103,6 @@
         <ul id="speciesList" class="sp-list" hidden></ul>
         <div id="recentSpecies" class="chips recent"></div>
       </div>
-    </div>
-
-    <div class="card loc-card">
-      <div class="card-head loc-head">
-        <span class="lbl">Lokalizacja</span>
-        <span class="loc-head-r">
-          <span id="locState" class="state-pill" data-s="live">na żywo</span>
-          <button id="locMiniToggle" type="button" class="mini-toggle" aria-expanded="true" aria-controls="locMiniWrap">
-            <span class="mt-txt">Zwiń mapkę</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
-          </button>
-        </span>
-      </div>
-      <div id="locMiniWrap" class="loc-mini">
-        <div id="locMini" class="loc-mini-map" aria-label="Podgląd położenia na mapie"></div>
-        <div class="mini-legend" aria-hidden="true">
-          <span><i class="lg-me"></i>Ty (GPS)</span>
-          <span id="lgTree" hidden><i class="lg-tree"></i>Punkt drzewa</span>
-        </div>
-        <button id="locMiniCenter" type="button" class="mini-center" aria-label="Wyśrodkuj mapkę">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-        </button>
-        <div id="locMiniEmpty" class="mini-empty">Czekam na sygnał GPS…</div>
-      </div>
-      <div class="coords">
-        <div><span class="k">φ, λ</span> <span id="locLL" class="v">—</span></div>
-        <div><span class="k">PUWG 1992</span> <span id="loc92" class="v">—</span></div>
-        <div><span class="k">dokładność</span> <span id="locAcc" class="v">—</span></div>
-        <div id="locDistRow" hidden><span class="k">od Ciebie</span> <span id="locDist" class="v">—</span></div>
-      </div>
-      <div class="btn-row">
-        <button id="locFix" type="button" class="btn">Zatwierdź tutaj</button>
-        <button id="locAvg" type="button" class="btn">Uśrednij 10 s</button>
-        <button id="locMap" type="button" class="btn">Popraw na mapie</button>
-      </div>
-      <button id="locLive" type="button" class="link-btn" hidden>Wróć do GPS na żywo</button>
     </div>
 
     <div class="card" id="cardTree">

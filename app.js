@@ -1,6 +1,6 @@
 'use strict';
 /* DendroTeren — inwentaryzacja drzew w terenie (PWA, iOS + Android). */
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -361,20 +361,20 @@ function renderLoc() {
 }
 
 /* ---------- mapka podglądu w karcie lokalizacji ---------- */
-let mini = null, miniBase = null, miniBaseName = '', miniMe = null, miniAcc = null, miniTree = null, miniDots = null, miniDotsKey = '', miniCentered = false, miniFollow = true;
+let mini = null, miniBase = null, miniBaseName = '', miniMe = null, miniAcc = null, miniTree = null, miniDots = null, miniDotsKey = '', miniCentered = false, miniFollow = true, miniTreeNr = null;
 function initMini() {
   mini = L.map('locMini', {
-    zoomControl: true, attributionControl: false, maxZoom: 21,
+    zoomControl: false, attributionControl: false, maxZoom: 21,
     dragging: true, touchZoom: true, doubleClickZoom: true, scrollWheelZoom: 'center', boxZoom: false, keyboard: false,
   });
+  L.control.zoom({ position: 'topright' }).addTo(mini);
   mini.setView([52.1, 19.4], 6);
   // po przesunięciu palcem mapka przestaje podążać za GPS, aż stukniesz ⌖
   mini.on('dragstart', () => setMiniFollow(false));
   miniDots = L.layerGroup().addTo(mini);
 }
 function renderMini(recenter) {
-  const wrap = $('#locMiniWrap');
-  wrap.hidden = !settings.locMini;
+  $('#locCard').classList.toggle('map-on', !!settings.locMini);
   if (!settings.locMini || $('#view-form').hidden) return;
   if (!mini) initMini();
   if (!miniBase) { miniBase = makeBaseLayer('orto').addTo(mini); miniBaseName = 'orto'; } // podgląd zawsze na ortofotomapie
@@ -396,15 +396,26 @@ function renderMini(recenter) {
   }
   const l = cur.loc, fixedPt = l && cur.locMode !== 'live';
   if (fixedPt) {
-    if (!miniTree) miniTree = L.marker([l.lat, l.lon], { icon: L.divIcon({ className: '', html: '<div class="mini-tree"></div>', iconSize: [0, 0] }), interactive: false, keyboard: false, zIndexOffset: 500 });
+    // zatwierdzony punkt: celownik z numerem, który dostanie drzewo
+    const nr = ($('#fNr').value || cur.nr || '').trim();
+    if (!miniTree) miniTree = L.marker([l.lat, l.lon], { interactive: false, keyboard: false, zIndexOffset: 500 });
+    if (miniTreeNr !== nr) { miniTree.setIcon(crosshairIcon(nr)); miniTreeNr = nr; }
     miniTree.setLatLng([l.lat, l.lon]).addTo(mini);
   } else if (miniTree) mini.removeLayer(miniTree);
-  $('#lgTree').hidden = !fixedPt;
   const c = fixedPt ? [l.lat, l.lon] : gps ? [gps.lat, gps.lon] : null;
   $('#locMiniEmpty').hidden = !!c;
   if (!c) return;
   if (!miniCentered || recenter) { mini.setView(c, Math.max(miniCentered ? mini.getZoom() : 18, 16), { animate: false }); miniCentered = true; }
   else if (miniFollow && !mini.getBounds().pad(-0.25).contains(c)) mini.panTo(c);
+}
+function crosshairIcon(nr) {
+  const lbl = document.createElement('span'); lbl.className = 'xhair-nr'; lbl.textContent = nr || '?';
+  return L.divIcon({
+    className: 'xhair',
+    html: '<svg viewBox="0 0 48 48" aria-hidden="true"><g class="o"><circle cx="24" cy="24" r="12"/><path d="M24 2v13M24 33v13M2 24h13M33 24h13"/></g>'
+      + '<g class="i"><circle cx="24" cy="24" r="12"/><path d="M24 2v13M24 33v13M2 24h13M33 24h13"/></g><circle class="c" cx="24" cy="24" r="2.2"/></svg>' + lbl.outerHTML,
+    iconSize: [48, 48], iconAnchor: [24, 24],
+  });
 }
 function setMiniFollow(on) {
   miniFollow = on;
@@ -610,7 +621,7 @@ function stepNr(d) {
   const n = trailingInt(v);
   if (n == null) inp.value = (project.prefix || '') + Math.max(1, project.nextNr + (d < 0 ? -1 : 0));
   else inp.value = v.replace(/(\d+)(?!.*\d)/, String(Math.max(0, n + d)));
-  cur.nr = inp.value; checkDup(); saveDraft();
+  cur.nr = inp.value; checkDup(); saveDraft(); renderMini();
 }
 
 /* ============================ mapa ============================ */
@@ -1123,7 +1134,7 @@ function bindUI() {
   Layers.bind();
 
   // numer
-  $('#fNr').addEventListener('input', () => { cur.nr = $('#fNr').value; checkDup(); saveDraft(); });
+  $('#fNr').addEventListener('input', () => { cur.nr = $('#fNr').value; checkDup(); saveDraft(); renderMini(); });
   $('#fNr').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
   $('#nrPlus').addEventListener('click', () => stepNr(1));
   $('#nrMinus').addEventListener('click', () => stepNr(-1));

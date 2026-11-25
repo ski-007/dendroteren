@@ -221,7 +221,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 .state-pill[data-s="manual"] { color: var(--paint); }
 .state-pill[data-s="none"] { color: var(--bad); }
 .coords { display: grid; gap: 2px; font-size: 15px; }
-/* mapka podglądu położenia */
+/* karta lokalizacji z mapką podglądu */
 .loc-head { align-items: center; }
 .loc-head-r { display: flex; align-items: center; gap: 8px; }
 .mini-toggle {
@@ -231,31 +231,65 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
 }
 .mini-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
 .mini-toggle[aria-expanded="false"] svg { transform: rotate(180deg); }
-.loc-mini { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
-.loc-mini[hidden] { display: none; }
-.loc-mini-map { height: 190px; background: var(--surface-2); }
-.loc-mini .leaflet-control-zoom a { width: 34px; height: 34px; line-height: 34px; font-size: 20px; }
-.mini-legend {
-  position: absolute; left: 6px; bottom: 6px; z-index: 500; display: flex; gap: 10px; padding: 3px 8px;
-  background: rgba(255,255,255,.88); color: #17221b; border-radius: 6px; font-size: 11px; font-weight: 600; pointer-events: none;
+
+/* zwinięta mapka: dane i przyciski pod nagłówkiem jak zwykle */
+.loc-body { display: flex; flex-direction: column; gap: 10px; }
+.loc-card:not(.map-on) .loc-mini-map,
+.loc-card:not(.map-on) .mini-center,
+.loc-card:not(.map-on) .mini-empty { display: none; }
+.loc-actions { display: flex; flex-direction: column; gap: 8px; }
+.live-btn { align-self: flex-start; background: none; border: 0; padding: 6px 0; color: var(--info); font-weight: 600; font-size: 15px; cursor: pointer; }
+
+/* rozwinięta mapka: duża ortofotomapa, dane i przyciski na niej */
+.loc-card.map-on .loc-body {
+  position: relative; display: block; height: clamp(340px, 58vh, 480px);
+  border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--surface-2);
 }
-.mini-legend span { display: inline-flex; align-items: center; gap: 4px; }
-.mini-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
-.mini-legend .lg-me { background: #2a62a8; }
-.mini-legend .lg-tree { background: var(--paint); }
+.loc-mini-map { position: absolute !important; inset: 0; z-index: 0; touch-action: none; }
+.loc-card.map-on .coords {
+  position: absolute; z-index: 2; top: 8px; left: 8px; max-width: calc(100% - 72px);
+  padding: 6px 10px; border-radius: 10px; background: rgba(12, 22, 16, .78); color: #fff;
+  font-size: 13px; gap: 0; pointer-events: none; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.loc-card.map-on .coords .k { min-width: 74px; font-size: 11px; color: #b9c8bd; }
+.loc-card.map-on .loc-actions {
+  position: absolute; z-index: 2; left: 8px; right: 8px; bottom: 8px; gap: 6px; pointer-events: none;
+}
+.loc-card.map-on .loc-actions > * { pointer-events: auto; }
+.loc-card.map-on .btn-row { flex-wrap: nowrap; gap: 6px; }
+.loc-card.map-on .btn-row > .btn {
+  min-width: 0; min-height: 46px; padding: 6px 4px; font-size: 13px; line-height: 1.15;
+  background: rgba(255,255,255,.94); color: #17221b; border-color: rgba(0,0,0,.15); box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.loc-card.map-on .btn-row > .btn:disabled { background: rgba(255,255,255,.7); color: #6b766f; }
+.loc-card.map-on .live-btn {
+  padding: 6px 12px; border-radius: 999px; background: rgba(12, 22, 16, .82); color: #fff; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.loc-mini-map .leaflet-top.leaflet-right { top: 54px; }
+.loc-mini-map .leaflet-control-zoom a { width: 40px; height: 40px; line-height: 40px; font-size: 22px; }
 .mini-center {
-  position: absolute; right: 8px; top: 8px; z-index: 500; width: 40px; height: 40px; border-radius: 8px;
+  position: absolute; right: 8px; top: 8px; z-index: 2; width: 44px; height: 44px; border-radius: 8px;
   border: 2px solid rgba(0,0,0,.2); background: #fff; color: #17221b; display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
+.mini-center svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .mini-center.off { background: var(--paint); color: #1a0f05; border-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
-.loc-mini-map { touch-action: none; }
-.mini-center svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .mini-empty {
-  position: absolute; inset: 0; z-index: 450; display: flex; align-items: center; justify-content: center;
+  position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center;
   font-size: 14px; color: var(--muted); background: color-mix(in srgb, var(--surface-2) 80%, transparent); pointer-events: none;
 }
 .mini-empty[hidden] { display: none; }
-.mini-tree { width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--paint); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.45); }
+
+/* celownik zatwierdzonego punktu z numerem drzewa */
+.xhair { position: relative; }
+.xhair svg { width: 48px; height: 48px; overflow: visible; display: block; }
+.xhair .o { fill: none; stroke: #fff; stroke-width: 5.5; stroke-linecap: round; opacity: .9; }
+.xhair .i { fill: none; stroke: var(--paint); stroke-width: 2.6; stroke-linecap: round; }
+.xhair .c { fill: var(--paint); stroke: #fff; stroke-width: 1.2; }
+.xhair-nr {
+  position: absolute; left: 36px; top: -6px; padding: 1px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--paint); color: #1a0f05; border: 2px solid #fff; font-weight: 800; font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4); font-variant-numeric: tabular-nums;
+}
 .coords .k { display: inline-block; min-width: 92px; color: var(--muted); font-size: 13px; }
 .coords .v { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
