@@ -1,6 +1,6 @@
 'use strict';
 /* DendroTeren — inwentaryzacja drzew w terenie (PWA, iOS + Android). */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -218,9 +218,9 @@ function renderStems(key) {
     rm.setAttribute('aria-label', 'Usuń pień'); rm.hidden = arr.length < 2;
     const sl = document.createElement('input');
     Object.assign(sl, { type: 'range', className: 'slider', min: '0', max: '1000', step: '1' });
-    sl.dataset.split = '200'; sl.dataset.vmax = '500';
+    sl.dataset.split = '150'; sl.dataset.vmax = '500';
     setSlider(sl, v);
-    sl.setAttribute('aria-label', 'Obwód – suwak (do połowy 0–200 cm, dalej 200–500 cm)');
+    sl.setAttribute('aria-label', 'Obwód – suwak (do połowy 0–150 cm, dalej 150–500 cm)');
     const setVal = (val) => { if (!cur[key].length) cur[key] = [null]; cur[key][i] = val; renderCalc(); saveDraft(); };
     inp.addEventListener('input', () => { const val = num(inp.value); setSlider(sl, val); setVal(val); });
     sl.addEventListener('input', () => { const val = sliderVal(sl); inp.value = val; setVal(val); });
