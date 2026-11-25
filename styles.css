@@ -265,6 +265,13 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
   box-shadow: 0 0 0 2px var(--paint), 0 3px 10px rgba(0,0,0,.4);
 }
 .clino .slider { --track: rgba(255,255,255,.3); }
+/* podziałka suwaka z podzieloną skalą */
+.slider-scale { position: relative; height: 16px; margin: -6px 17px 2px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.slider-scale span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.slider-scale span.mid { color: var(--paint); font-weight: 800; }
+.slider-scale span.mid::before { content: ""; position: absolute; left: 50%; top: -9px; width: 2px; height: 7px; background: var(--paint); }
+body:not(.sliders) .slider-scale { display: none; }
+.stem .slider-scale { grid-column: 1 / -1; }
 body:not(.sliders) .slider:not(.always) { display: none; }
 
 /* ---------- photos ---------- */

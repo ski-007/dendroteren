@@ -1,6 +1,6 @@
 'use strict';
 /* DendroTeren — inwentaryzacja drzew w terenie (PWA, iOS + Android). */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -131,7 +131,37 @@ function showView(name) {
 /* ============================ formularz ============================ */
 function setSeg(sel, val) { $$(sel + ' button').forEach((b) => b.classList.toggle('on', b.dataset.v === val)); }
 function setChips(sel, vals) { $$(sel + ' button').forEach((b) => b.classList.toggle('on', vals.includes(b.dataset.v))); }
-function setDim(id, v) { $('#' + id).value = v ?? ''; $('#' + id + 'r').value = v ?? 0; }
+function setDim(id, v) { $('#' + id).value = v ?? ''; setSlider($('#' + id + 'r'), v); }
+
+/* Suwaki z podzieloną skalą (data-split): pierwsza połowa toru = 0…split, druga = split…vmax.
+   Tor ma 1000 kroków, wartość zaokrąglana do step wymiaru. */
+function sliderVal(sl) {
+  const p = +sl.value;
+  if (!sl.dataset.split) return p;
+  const split = +sl.dataset.split, vmax = +sl.dataset.vmax, half = +sl.max / 2;
+  const v = p <= half ? p / half * split : split + (p - half) / half * (vmax - split);
+  return Math.round(v);
+}
+function setSlider(sl, v) {
+  v = v ?? 0;
+  if (sl.dataset.split) {
+    const split = +sl.dataset.split, vmax = +sl.dataset.vmax, half = +sl.max / 2;
+    v = Math.max(0, Math.min(vmax, v));
+    sl.value = v <= split ? v / split * half : half + (v - split) / (vmax - split) * half;
+  } else sl.value = v;
+  fillSlider(sl);
+}
+/* podziałka pod suwakiem z podzieloną skalą: 0 · 100 · 200 · 350 · 500 */
+function splitScale(sl) {
+  const split = +sl.dataset.split, vmax = +sl.dataset.vmax;
+  const d = document.createElement('div'); d.className = 'slider-scale'; d.setAttribute('aria-hidden', 'true');
+  [[0, 0], [25, split / 2], [50, split], [75, (split + vmax) / 2], [100, vmax]].forEach(([pos, val]) => {
+    const t = document.createElement('span'); t.style.left = pos + '%'; t.textContent = val;
+    if (pos === 50) t.className = 'mid';
+    d.append(t);
+  });
+  return d;
+}
 
 function renderForm() {
   $('#fNr').value = cur.nr || '';
@@ -187,13 +217,15 @@ function renderStems(key) {
     Object.assign(rm, { type: 'button', className: 'rm', textContent: '×' });
     rm.setAttribute('aria-label', 'Usuń pień'); rm.hidden = arr.length < 2;
     const sl = document.createElement('input');
-    Object.assign(sl, { type: 'range', className: 'slider', min: '0', max: '500', step: '1', value: v ?? 0 });
-    sl.setAttribute('aria-label', 'Obwód – suwak');
+    Object.assign(sl, { type: 'range', className: 'slider', min: '0', max: '1000', step: '1' });
+    sl.dataset.split = '200'; sl.dataset.vmax = '500';
+    setSlider(sl, v);
+    sl.setAttribute('aria-label', 'Obwód – suwak (do połowy 0–200 cm, dalej 200–500 cm)');
     const setVal = (val) => { if (!cur[key].length) cur[key] = [null]; cur[key][i] = val; renderCalc(); saveDraft(); };
-    inp.addEventListener('input', () => { const val = num(inp.value); sl.value = val ?? 0; fillSlider(sl); setVal(val); });
-    sl.addEventListener('input', () => { inp.value = sl.value; setVal(+sl.value); });
+    inp.addEventListener('input', () => { const val = num(inp.value); setSlider(sl, val); setVal(val); });
+    sl.addEventListener('input', () => { const val = sliderVal(sl); inp.value = val; setVal(val); });
     rm.addEventListener('click', () => { cur[key].splice(i, 1); renderStems(key); renderCalc(); saveDraft(); });
-    row.append(inp, rm, sl);
+    row.append(inp, rm, sl, splitScale(sl));
     box.append(row);
   });
 }
@@ -1093,8 +1125,9 @@ function bindUI() {
   // wymiary + suwaki
   for (const [id, key] of [['fH', 'h'], ['fCrown', 'crown'], ['fArea', 'area']]) {
     const inp = $('#' + id), sl = $('#' + id + 'r');
-    inp.addEventListener('input', () => { cur[key] = num(inp.value); sl.value = cur[key] ?? 0; fillSlider(sl); renderCalc(); saveDraft(); });
-    sl.addEventListener('input', () => { inp.value = sl.value; cur[key] = +sl.value; renderCalc(); saveDraft(); });
+    inp.addEventListener('input', () => { cur[key] = num(inp.value); setSlider(sl, cur[key]); renderCalc(); saveDraft(); });
+    sl.addEventListener('input', () => { const val = sliderVal(sl); inp.value = val; cur[key] = val; renderCalc(); saveDraft(); });
+    if (sl.dataset.split) sl.after(splitScale(sl));
   }
 
   // chipy
